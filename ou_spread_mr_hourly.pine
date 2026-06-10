@@ -1,0 +1,95 @@
+// OU Spread MR — HOURLY (v3, 2026-06-10) — the construction that survived 12-YEAR validation.
+//
+// WHAT THIS IS AND WHAT THE RESEARCH ACTUALLY FOUND (full record in strategy-dev-mr/README.md):
+//   * Daily-bar spread MR is DEAD post-2000 (cracks are ~random walks at the daily horizon;
+//     tested level/seasonal/asymmetric/cross-sectional over 36 years — all ~0 net of cost).
+//   * The edge is HOURLY: same 2-3 WEEK reversion, but hourly bars let you enter AT the
+//     intrabar extreme instead of the daily settle.
+//   * DEFINITIVE TEST — 12.3 years of Dukascopy hourly across the energy/metals/softs complex:
+//     only the cleanest cointegrated spreads revert SMOOTHLY. The standout, and the spread
+//     this script is really for, is:
+//         BRENT - WTI  (crude quality/location crack):
+//         Sharpe 1.93, BOTH halves 1.93/1.99, eqR2 0.98, gain/pain 17.6 over 12.3 years.
+//     GAS-WTI and GAS-BRENT (BTU spreads) are usable seconds (eqR2 ~0.8). Diesel cracks and
+//     metals ratios do NOT revert smoothly even over 12 years — so a small handful of clean
+//     reverters exist, led by BRENT-WTI; this is a structural property of the asset class.
+//   * The VOL GATE below is load-bearing: trading only when 5d spread vol exceeds its 6-month
+//     median (dislocation regime) lifted robustness sharply (worst-half Sharpe sum +0.6 -> +2.5
+//     on the independent CL-BRN set). Keep it ON.
+//
+// HOW TO USE (lead with the validated winner):
+//   * 1H chart on a NATIVE spread symbol typed into the TV symbol box, e.g.
+//       ICEEUR:BRN1!-NYMEX:CL1!        ** BRENT-WTI crude crack — the smooth, validated one **
+//       NYMEX:NG1!*10-NYMEX:CL1!       (BTU / fuel-switch spread — usable second; tune weight)
+//       NYMEX:RB1!*42-NYMEX:CL1!       (RBOB crack — works but choppier; needs 3y+ history)
+//       NYMEX:RB1!*28+NYMEX:HO1!*14-NYMEX:CL1!   (3:2:1 crack)
+//   * Defaults assume ~23h energy sessions (≈18-19 hourly bars/day). For pit-session
+//     markets (grains ~8 bars/day) scale the window inputs down proportionally.
+//   * Orders are decided on closed bars and FILL NEXT BAR OPEN. Do not enable calc_on_every_tick.
+//
+// Causal/no-repaint: every stat uses confirmed bars only; no security() calls.
+//@version=6
+strategy("OU Spread MR Hourly", shorttitle="OU-MR-1H", overlay=false,
+     pyramiding=0, calc_on_every_tick=false, process_orders_on_close=false,
+     initial_capital=100000, default_qty_type=strategy.fixed, default_qty_value=1,
+     commission_type=strategy.commission.percent, commission_value=0.01, slippage=1,
+     max_bars_back=5000)
+
+// ---- inputs (frozen from validation; windows in BARS) ----
+dtLen  = input.int(504, "Detrend window (bars ~ 28 trading days)", minval=50, group="Signal")
+zLen   = input.int(336, "Z-score lookback (bars ~ 18 trading days)", minval=30, group="Signal")
+zEntry = input.float(2.5, "Entry |z|", step=0.1, group="Signal")
+zExit  = input.float(0.75, "Exit |z| (near mean)", step=0.05, group="Signal")
+zStop  = input.float(4.0, "Disaster stop |z|", step=0.1, group="Signal")
+tStop  = input.int(190, "Time stop (bars ~ 10 trading days)", minval=10, group="Exit")
+useVG  = input.bool(true, "Vol gate: only enter in dislocation regime", group="Regime")
+vgFast = input.int(95,  "Vol gate fast window (bars ~ 5 trading days)", group="Regime")
+vgSlow = input.int(2400, "Vol gate slow median (bars ~ 6 months)", group="Regime")
+allowL = input.bool(true, "Allow longs", group="Side")
+allowS = input.bool(true, "Allow shorts", group="Side")
+
+// ---- drift-adjusted signal level (kills roll-carry drift the z would fight) ----
+dX  = close - close[1]
+mu  = ta.sma(dX[1], dtLen)                      // causal drift estimate
+var float S = 0.0
+S := S + (na(dX) ? 0.0 : dX - nz(mu))           // detrended cumulative level
+
+// ---- causal z-score (mean/stdev exclude current bar) ----
+basis = ta.sma(S[1], zLen)
+dev   = ta.stdev(S[1], zLen)
+z     = dev > 0 ? (S - basis) / dev : na
+
+// ---- vol-regime gate: trade only when 5d spread vol exceeds its 6-month median ----
+// (validated independently on 3.3y CL-BRN: sum of worst-half Sharpes +0.6 -> +2.5)
+sigFast = ta.stdev(dX, vgFast)
+sigSlow = ta.median(sigFast, vgSlow)
+hot     = not useVG or (not na(sigSlow) and sigFast > sigSlow)
+
+// ---- entries / exits (decide on close, fill next open) ----
+warm = bar_index > dtLen + zLen
+var int entryBar = na
+longSig  = warm and barstate.isconfirmed and hot and allowL and not na(z) and z <= -zEntry and strategy.position_size == 0
+shortSig = warm and barstate.isconfirmed and hot and allowS and not na(z) and z >=  zEntry and strategy.position_size == 0
+if longSig
+    strategy.entry("L", strategy.long)
+    entryBar := bar_index
+if shortSig
+    strategy.entry("S", strategy.short)
+    entryBar := bar_index
+held = not na(entryBar) ? bar_index - entryBar : 0
+if strategy.position_size > 0 and barstate.isconfirmed
+    if na(z) or z >= -zExit or math.abs(z) >= zStop or held >= tStop
+        strategy.close("L")
+if strategy.position_size < 0 and barstate.isconfirmed
+    if na(z) or z <= zExit or math.abs(z) >= zStop or held >= tStop
+        strategy.close("S")
+
+// ---- plots ----
+hline(0, "mean", color=color.new(color.gray, 60))
+plot( zEntry, "entry+", color=color.new(color.red, 70))
+plot(-zEntry, "entry-", color=color.new(color.green, 70))
+plot( zExit,  "exit+",  color=color.new(color.gray, 80))
+plot(-zExit,  "exit-",  color=color.new(color.gray, 80))
+plot(z, "z", color=color.new(color.blue, 0))
+plotshape(longSig,  "Long",  shape.triangleup,   location.bottom, color.new(color.lime, 0), size=size.tiny)
+plotshape(shortSig, "Short", shape.triangledown, location.top,    color.new(color.red, 0),  size=size.tiny)

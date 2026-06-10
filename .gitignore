@@ -1,0 +1,8 @@
+# downloaded market data (large, regenerate via fetch_*.py)
+data_hourly/
+data_duka/
+data_fx/
+*.bi5
+__pycache__/
+*.pyc
+.DS_Store
