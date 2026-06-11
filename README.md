@@ -125,7 +125,10 @@ never mechanically coherent.
 - the 3.3y CL–BRN honest validation (next-open, IS 0.78 / OOS 1.28, TV data)
 - the 2y Yahoo hourly books (`hourly_lab.py`/`final.py`: curated 0.78/1.84 OOS,
   broad 0.68/1.09) — honest fills, real futures legs, roll-censored
-- a modest, feed-fragile BRENT–WTI reversion on real futures quotes (~0.9, 3.2y, wave-3)
+- ~~a modest, feed-fragile BRENT–WTI reversion on real futures quotes (~0.9, 3.2y, wave-3)~~
+  **downgraded to SUSPECT by W4-B:** fails delay-1 entry (0.93→0.15) and a deliberate
+  +1h leg-misalignment control supercharges it to 5.14 — the pipeline harvests async-feed
+  artifacts on cross-venue data; see wave 4/5 below
 
 ## Wave 4 (pre-registered): the last stand — honest BRN–WTI on real futures feeds only
 
@@ -136,6 +139,43 @@ Yahoo BZ/CL legs (2y, roll-censored). Promote iff: Sharpe ≥ 0.6 net ×1 on eac
 independent real-futures constructions AND pooled halves both > 0 AND ×2-cost Sharpe ≥ 0.3
 AND no contradiction with the 12y CFD honest figure. Else: document the program-wide
 negative result as the finding.
+
+### Wave-4 results: a genuine conflict requiring adjudication
+
+**W4-A (validator): PROMOTE on the letter of the gates.** C1 (TV BRN1!−CFI_WTI, 3.2y)
+×1 Sharpe 0.93 / ×2 0.69, eqR² 0.97; C2 (Yahoo BZ−CL, both legs real NYMEX futures, 2.4y)
+×1 **1.21** / ×2 0.99; pooled halves 1.87/1.09; every yearly Sharpe positive on every
+construction; per-trade gross edge 33–51 ticks vs 6-tick round-trip cost; shuffle null
+rejected at ~10σ; frozen spec at the *bottom* of its parameter neighborhood (no cherry-pick).
+`curves/w4_brnwti_futures.png`
+
+**W4-B (adversary): retraction CONFIRMED and sharpened** — and W4-A's C1 undermined.
+- The 12y fabrication mechanism is now precise: not "stale-bar dilution" but **async
+  one-leg freezes + thaw snap-backs**: 91.2% of all dirty-backtest pnl accrues on THAW bars
+  (3.0% of bars), 95.6% on one-leg-stale+thaw (9.7%); masking them collapses 1.98 → 0.12.
+  30.3% of entries filled at one-leg-frozen quotes that never traded (4.5× base rate).
+  Dilution defense refuted analytically (zero-pnl bars are Sharpe-invariant) and
+  empirically (V2=V0=1.98). Weekend-only cleaning "recovers" 1.90 — but masking its own
+  residual frozen/thaw bars gives 0.00, with clean dose-response in residual staleness.
+- **New adverse finding:** the TV-based C1 construction fails stress: delay-1 entry
+  0.93 → 0.15; pnl-censoring the first bar of each NY day halves it; **deliberately
+  misaligning the WTI leg by +1h yields Sharpe 5.14** — on cross-venue feeds this pipeline
+  is an async-artifact harvester, so C1 (and the 15-min corroboration sharing its CFD leg)
+  cannot count as judgment evidence. `curves/w4_adversarial_review.png`
+
+**The promote therefore rests solely on C2 (same-venue NYMEX BZ−CL).** Wave 5 adjudicates.
+
+## Wave 5 (pre-registered adjudication, kill-biased)
+
+C2 (Yahoo BZ−CL) must pass ALL of:
+1. **Delay-1 entry** (enter at open[t+2]): retains ≥ 50% of ×1 Sharpe (≥ ~0.6).
+2. **Misalignment control**: deliberately shifting the CL leg +1h must NOT supercharge
+   (misaligned Sharpe < 1.5× aligned) — sanity that the same-venue feed isn't async.
+3. **Liquid-hours test**: entries restricted to hours where both legs trade actively
+   retain ≥ 50% of Sharpe (the edge must not live in thin/stale hours).
+4. Bid-ask-bounce diagnostics (lag-1 autocorr of spread changes by hour-of-day liquidity,
+   BZ per-leg staleness rate within bars) reported and not artifact-dominant.
+Fail any → KILL, and the program concludes with the documented negative result.
 
 ---
 
