@@ -27,24 +27,48 @@
 
 ## Hypothesis slate (wave 1 — event-study screens across ~45 instruments)
 
-| id | mechanism | status |
+| id | mechanism | verdict (wave 1) |
 |---|---|---|
-| H1 failed breakout | trapped breakout traders unwind after intrabar level take-out fails | testing |
-| H2 thrust exhaustion | liquidity-vacuum moves retrace when the book refills | testing |
-| H3 post-vol-shock normalization | forced flows overshoot; price relaxes once vol crests | testing |
-| H4 illiquid-session reversal | thin-book overnight moves re-priced by liquid-session flow | testing |
-| H5 leader-laggard diffusion | price discovery in the leader; laggard catches up with delay | testing |
-| H6 trend exhaustion / nonlinear response | reversion only in the extreme tail of runs | testing |
-| H7 overnight vs intraday / gap fade (daily, 25y × 49) | openings overshoot on thin liquidity | testing |
-| H8 hour-of-day conditioning | periodic mechanical flows (fixes, settlements) | testing |
+| H1 failed breakout | trapped breakout traders unwind after intrabar level take-out fails | **weak** — conditioning real (t=4.0, placebo p=0, 74% of 43 instruments) at 5-day levels & h=8–48, but 0.03–0.14 vu/event vs ~0.2 vu cost; natural-variant backtest Sharpe −2.3. JPY crosses anti (carry momentum). |
+| H2 thrust exhaustion | liquidity-vacuum moves retrace when the book refills | **weak** — immediate bounce real (t≈6 at h=1–4) but 5× below cost; mechanism's own timescale (h≤8) is the DEAD zone; separate h=24–48 wave (t=5.2, 84% sign-consistent, edge/cost 0.97) is a different hypothesis → wave 2. |
+| H3 post-vol-shock normalization | forced flows overshoot; price relaxes once vol crests | **weak** — crest-timing FALSIFIED by its own control (entering while RV still rising is BETTER: t 3.9–5.5 vs 2.4–3.2). Residue: in extreme-vol states (RV24 ≥ 3× baseline) fading the 24h move has edge/cost ≈ 1.9 at h=8–16 → wave 2 as a fresh hypothesis. |
+| H4 illiquid-session reversal | thin-book overnight moves re-priced by liquid-session flow | **KILL** — wrong-signed at all 15 grid points: illiquid-session moves *continue* (FX t −3 to −4.2); control inverted (liquid-session moves revert more). Mechanism falsified in both arms. |
+| H5 leader-laggard diffusion | price discovery in the leader; laggard catches up with delay | **KILL** — catch-up wrong-signed at h=1–8 in all 6 cells; overshoot variant also fails; gross conditional edge ≈ 0 (backtest loss ≈ exact cost bill); 53% sign consistency. |
+| H6 trend exhaustion / nonlinear response | reversion only in the extreme tail of runs | **KILL** — signature prediction fails: D2/D3/D5 revert as much as tails, bottom-2% tail *continues*, commodity up-tails show momentum; edge/cost < 0.5 in all 30 cells. |
+| H7 overnight gap fade (daily, 26y × 59) | openings overshoot on thin liquidity | **weak** — hugely real at open→close (t=7.8 futures / 8.3 equities, 88% consistency, edge/cost 2.3) BUT requires filling the open print (all honest next-open horizons dead), and decayed to ~0 from 2010–2024. A true edge that died with electronification. |
+| H8 hour-of-day conditioning | periodic mechanical flows (fixes, settlements) | **weak** — London-fix cell dead (placebo p=1.0). Genuine hour-specific 17–19 UTC fade block (p≤.003) but sub-cost (e/c 0.4–0.66). Monster 20–22 UTC FX "reversion" (t=31) is suspected bid-ask bounce in Dukascopy bid candles (unconditional fade t 40–56 there) → forensics in wave 2. |
 
 Verdict standard (pre-registered): kill = pooled |t|<2 at all horizons or sign-inconsistent
 (<55% of instruments) or edge/cost<0.5; promising = pooled |t|≥3, ≥60% same sign, placebo
-p≤0.05, edge/cost≥1. Screens use small pre-specified grids reported in full — no tuning.
+p≤0.05, edge/cost≥1. Screens used small pre-specified grids reported in full — no tuning;
+natural variants declared ex-ante were the only cells backtested (several were the "wrong"
+cell ex-post — that's the discipline working, not a bug).
 
-*(Results land here as waves complete; survivors face the full gauntlet: IS/OOS, walk-forward,
-vol/market regimes, parameter neighborhoods, 2× costs, cross-instrument, sub-periods,
-randomization.)*
+**Wave-1 meta-lessons:**
+1. Short-horizon (≤8h) single-instrument reversion exists almost everywhere but is
+   microstructure-sized (0.02–0.05 vu) — ~5× below realistic costs. The market is efficient
+   at the hourly scale to within transaction costs.
+2. Three screens independently converge on the same surviving structure: **multi-day
+   (24–48h) relaxation after large fast moves in extreme-volatility states, FX-led** —
+   the same physics as Program 1's validated vol gate. Wave 2 pre-registers exactly this.
+3. Costs are the kill criterion, not significance — pooled t-stats of 4–6 died at the cost
+   line repeatedly. Any future claim must lead with edge/cost, not t.
+4. Repo audit (`docs/repo_study.md`) found Program 1's headline engines (`duka_cracks.py`,
+   `hourly4y.py`, `broad_book.py`) use same-close fills despite README claims of next-open —
+   the 12y BRENT–WTI Sharpe 1.93 and the 10-security book are optimistic; honest-fill
+   engines are `hourly_lab.py`/`final.py` only. Program 2 inherits next-open discipline.
+
+## Wave 2 (pre-registered before running)
+
+- **W2-A — Post-dislocation relaxation (PDR):** state RV24/median(RV24,10d) ≥ 3; fade the
+  trailing 24h move; primary h=16 (secondary 8/24/48; neighborhood k∈{2.5,3.5}). Full
+  gauntlet incl. cross-FEED validation (TV 60-min ICE/COMEX/OANDA exports, Yahoo futures
+  legs — data wave 1 never touched), drop-EUR-exotics, ×2 costs (×3 on exotics).
+- **W2-B — Settlement-window fade:** 17–19 UTC block (named ex-ante by H8), |1h move| ≥
+  {1.5, 2.0} ATR, h∈{2,4}. Kill if edge/cost < 1 everywhere.
+- **W2-C — 20–22 UTC anomaly forensics:** artifact-vs-real tests: cross-feed replication
+  (OANDA/FOREXCOM TV exports), 1-bar-delayed entry, per-year stability. No promotion without
+  surviving a different data feed AND entry delay.
 
 ---
 
