@@ -70,6 +70,23 @@ cell ex-post — that's the discipline working, not a bug).
   (OANDA/FOREXCOM TV exports), 1-bar-delayed entry, per-year stability. No promotion without
   surviving a different data feed AND entry delay.
 
+### Wave-2 results: ALL THREE KILLED (pre-registered rules applied mechanically)
+
+| study | result |
+|---|---|
+| W2-A PDR | **KILL.** Conditioning real in-feed (pooled t=5.0, signed placebo p=0.000, 78% of 41 instruments positive, shuffle p=0.000, 10/13 years ≥ −0.1) — but portfolio Sharpe 0.41 < 0.5 gate at ×1 costs, **no neighborhood cell (k×h grid) reaches 0.5**, and cross-feed fails decisively: TV 60-min t=+1.58 (right sign, under the t≥2 bar), **Yahoo real-futures t=−1.17 (wrong sign, mini-portfolio −0.56)**. The vol-dislocation fade is partly a CFD/spot-feed phenomenon, not a portable futures anomaly. Residue: commodities-only sub-book (Sharpe 0.51, both halves +, TV commodities +) → only with fresh pre-registration + real-futures confirmation. `curves/w2_pdr.png` |
+| W2-B settlement fade | **KILL.** The 17–19 UTC hour-specificity exists only for moderate (1.0–1.5 ATR) moves and is structurally sub-cost (e/c ≤ 0.5); raising the threshold monotonically destroys hour-specificity (placebo p 0.000→0.24→0.99). Portfolio −0.85 Sharpe, both halves negative, cross-feed wrong sign. Settlement flow causes small systematic overshoot — real physics, untradeable at any realistic cost. `curves/w2_settle.png` |
+| W2-C rollover anomaly | **ARTIFACT (kill).** The t=31 fade at 20–22 UTC is Dukascopy bid-candle distortion in the 5pm-ET rollover window: profit concentrated in the first post-event bar (38% survives 1-bar delay, 8–19% survives 2), almost entirely LONG-side (t=58 vs 5.8 — buying a spread-depressed bid), invisible on OANDA/FOREXCOM mid feeds (t=0.11), 15-min mid-quote path NEGATIVE at all horizons, break-even spread (3.5–8.7bp) inside realistic rollover spreads, gaps 25× and volume 0.34× normal in-window. Yearly stability on one feed ≠ alpha. `curves/w2_rollover.png` |
+
+**New screen-hygiene rule (binding on all future hourly FX work):** exclude Dukascopy FX
+bars opening 20:00–22:59 UTC and Sunday bars from event detection AND entry; flag any
+"survivor" whose events cluster there.
+
+**State of the program after two waves:** every orthogonal mechanism tested so far is
+either falsified, sub-cost, or feed-specific. This is the expected shape of honest research
+— the apparatus has caught two classes of fake edge (cost-invisible significance, feed
+artifacts) that would each have produced a beautiful fake equity curve.
+
 ---
 
 # Spread Mean-Reversion Research — strategy-dev-mr (Program 1, COMPLETE)
