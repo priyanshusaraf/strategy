@@ -214,6 +214,61 @@ PROMOTE (as a bounded 2.4y candidate, not a proven edge) iff ALL of:
 3. C1 under the same engine stays dead (< 0.3 — consistency: its edge was artifact).
 Else: final KILL and the program concludes with the documented negative result.
 
+### Wave-6 result: the discriminating experiment PASSES — one bounded candidate survives
+
+(`ortho/w6_final.py`, `curves/w6_final.png`; fidelity battery bit-identical to waves 3–5)
+
+| construction (delay-1 engine, hour-22 dropped) | ×1 Sharpe | ×2 | halves | note |
+|---|---|---|---|---|
+| **A: BZ−CL aligned (NYMEX legs)** | **1.19** | **0.97** | 1.10 / 1.28 | every year positive (1.84/0.56/1.61) |
+| B: CL +1h deliberately misaligned | 0.11 | −0.12 | — | was **4.48** without delay |
+| B: CL −1h deliberately misaligned | 0.01 | −0.20 | — | was **4.28** without delay |
+| C: C1 TV cross-venue | 0.15 | −0.10 | — | stays dead (artifact, per W4-B) |
+
+The delayed engine **destroys deliberate corruption (4.5 → ~0, inverting to a penalty)
+while the aligned edge retains 91%** — the misalignment gate is now informative, and the
+construction passes it by an order of magnitude. Gates: A ≥ 0.6/0.4 ✓, misaligned < 1.5×A ✓,
+C1 < 0.3 ✓ → **promote as BOUNDED CANDIDATE**.
+
+Adverse texture that travels with the claim: median trade 7.0 gross ticks vs 6-tick
+round-trip cost (mean 49.1 — pnl is right-tail dependent); eqR² 0.83 with a 182-day
+underwater stretch; 2.39 years, one construction, post-2023 regime only (the same rule
+family earns 0.37 on 12.3y of clean CFD history — regime dependence is the central risk).
+
+---
+
+# FINAL CONCLUSIONS (Program 2, 2026-06-11)
+
+**17 pre-registered studies across 6 waves. 16 kills. 1 bounded candidate.**
+
+1. **The orthogonal mean-reversion space, as testable on this data, is empty at realistic
+   costs.** Every mechanism — failed breakouts, thrust exhaustion, vol-shock normalization,
+   session reversal, leader-laggard, trend exhaustion, gap fade, hour-of-day flows, vol-state
+   relaxation, settlement flows, volume climax — is falsified, sub-cost (typically ~5× below),
+   or a data artifact. Short-horizon fade "significance" (pooled t 4–6) is everywhere and
+   tradeable nowhere: **markets at the hourly scale are efficient to within transaction
+   costs**, and edge/cost — never t — is the decision variable.
+2. **The program's primary scientific product is the retraction + artifact taxonomy.**
+   Program 1's celebrated results were fabricated by identifiable data pathologies:
+   (i) one-leg-freeze/thaw harvesting on stale placeholder bars (91% of pnl on 3% of bars;
+   12y "Sharpe 1.93" → honest 0.37); (ii) rollover bid-candle bounce (a t=31 fake edge);
+   (iii) async cross-feed harvesting (deliberate misalignment supercharges z-MR to ~5);
+   (iv) sub-cost significance. Each would have produced a beautiful, fake equity curve.
+3. **A methodological invention the kills forced:** z-MR rules mechanically harvest *any*
+   added stationary noise, so a positive backtest from this family carries no evidence about
+   feed soundness. The fix — **delay-certified execution** (all fills at open[t+2]) — makes
+   the misalignment control informative; evidence from non-certified engines is inadmissible.
+4. **The surviving artifact:** NYMEX BZ−CL hourly spread MR, frozen Program-1 rule, delay-1
+   execution: **Sharpe 1.19 net / 0.97 at ×2 costs over 2.39y**, certification-passing,
+   every year positive — promoted strictly as a **candidate requiring extended validation**
+   (longer history as it accrues, an independent same-venue feed, paper-trade fill realism).
+   Deliverables: `ortho/strategy_bzcl.py`, `bzcl_mr_delay1.pine`, `docs/final_report.md`.
+5. **Honest answer to the mandate:** no *genuinely robust* orthogonal MR strategy exists in
+   this data at this cost structure — and fourteen of the sixteen kills are mechanisms the
+   literature and intuition consider plausible. A weaker-but-real bounded candidate plus a
+   transferable artifact taxonomy is what survives a high burden of proof; anything more
+   would have required accepting one of the beautiful fakes this program exists to reject.
+
 ---
 
 # Spread Mean-Reversion Research — strategy-dev-mr (Program 1, COMPLETE — PARTIALLY RETRACTED)

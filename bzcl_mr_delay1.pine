@@ -1,0 +1,286 @@
+// =============================================================================
+// BZ-CL HOURLY SPREAD MEAN REVERSION — DELAY-1 EXECUTION
+// BOUNDED CANDIDATE, 2.39y — TradingView port of ortho/strategy_bzcl.py
+// =============================================================================
+//
+// CHART REQUIREMENTS: NYMEX:BZ1! (Brent financial), 60-minute timeframe.
+// The WTI leg (NYMEX:CL1!) is pulled via request.security and the spread is
+// constructed MANUALLY in this script as BZ.close - CL.close.
+//
+// WHY THE SPREAD IS BUILT MANUALLY — NEVER A TV SPREAD SYMBOL:
+//   TradingView spread symbols ("NYMEX:BZ1!-NYMEX:CL1!") are server-side
+//   precomputes: leg-stripped (no per-leg volume/staleness/roll information),
+//   with session alignment and back-adjustment you cannot audit. This research
+//   program proved that exactly this class of construction fabricates alpha
+//   for z-MR rules: a pre-built TV spread file was flagged CONTAMINATED
+//   (wave 4, C3); the cross-venue TV construction (C1) collapsed under a
+//   1-bar entry delay (0.93 -> 0.15) and was SUPERCHARGED to Sharpe 5.14 by
+//   deliberately misaligning one leg by +1h — the async-artifact signature.
+//   The ONLY construction that passed certification is same-venue NYMEX legs
+//   joined bar-by-bar with both legs visible. This script reproduces that
+//   construction; per-leg roll jumps are censored in-script.
+//
+// THE FROZEN RULE (validated record — ortho/w6_final.py construction A):
+//   spread dS from leg $-changes (1:-1 fixed weights, roll bars censored);
+//   detrend S = cumsum(dS - SMA(dS,28td)); causal z of S over an ENSEMBLE of
+//   8 subs (z windows {9,12,18,24} trading days x entry |z|>={2.5,3.0});
+//   exit |z|<=0.75; stops |z|>=4 and 10td time stop; vol gate (5d ewm vol of
+//   dS > rolling 6m median); per-trade risk-frozen 1/sigma sizing (ewm 63td
+//   std of dS); hour-22-UTC and Sunday bars excluded; ALL fills at open[t+2].
+//   The 8 subs are combined into ONE net position (equal-weight average).
+//
+// DELAY-1 TIMING SEMANTICS (the strategy DEFINITION — precisely):
+//   1. Bar t closes  -> the full decision state (z ensemble, gate, sizing,
+//      net target position uNet[t]) is computed on confirmed data.
+//   2. Bar t+1 closes -> this script reads the ONE-BAR-DELAYED series
+//      uSig = uNet[1] (i.e. the bar-t decision) and submits market orders to
+//      move the position to that target.
+//   3. Because the strategy declares process_orders_on_close=false, orders
+//      submitted on the close of bar t+1 FILL AT THE OPEN OF BAR t+2.
+//   So every transition — entry, exit, z-stop, time-stop — decided at
+//   close[t] fills at open[t+2], matching the validated Python engine
+//   (u.shift(1) into a next-open fill model). DO NOT remove the [1] delay or
+//   set process_orders_on_close=true: delay-1 execution is the
+//   artifact-resistance certification. Under no-delay fills, deliberately
+//   misaligned-leg controls scored Sharpe 4.48/4.28 (the rule harvests
+//   injected noise by construction); under delay-1 they collapse to
+//   0.11/0.01 while the aligned edge survives (wave 6 mechanism check).
+//
+// CAVEATS — READ BEFORE TRUSTING ANY NUMBER THIS SCRIPT PRODUCES:
+//   * BOUNDED CANDIDATE, NOT A PROVEN EDGE. Validated sample: 2.39 years,
+//     ONE construction (Yahoo BZ-CL hourly legs). Record: Sharpe 1.19 net at
+//     x1 costs / 0.97 at x2, halves 1.10/1.28, eqR2 0.83, gain/pain 3.70,
+//     maxDD -26.8 vol units, 189 trades/yr across the 8 subs, yearly Sharpe
+//     1.84 / 0.56 / 1.61. Scope is pre-registered: "candidate requiring
+//     extended validation", never "proven robust edge".
+//   * MEDIAN TRADE NEAR COST: the median trade makes 7.0 gross ticks against
+//     a 6-tick round-trip cost (mean 49.1 — the pnl is RIGHT-TAIL dependent).
+//     Longest underwater stretch: 182 days inside the 2.39y sample. Any
+//     extra slippage puts the median trade under water.
+//   * REGIME RISK: the same rule family run honestly over 12 years of (CFD)
+//     history scores Sharpe 0.37. 2024-26 is one dislocation-rich regime.
+//   * RETRACTION HISTORY: this program retracted its own prior headline
+//     results (12y Sharpe 1.93; "10 smooth securities") after forensics
+//     found stale-bar fabrication and same-close-fill alpha — see README.md
+//     "RETRACTION of Program 1 headline results" in strategy-dev-mr. This
+//     candidate is what survived the kill-biased rebuild; apply the same
+//     suspicion to anything this script shows you.
+//
+// !! DATA WARNING — TV RESULTS ARE INDICATIVE ONLY !!
+//   TV continuous front-month series (BZ1!/CL1!) differ from the validated
+//   Yahoo data: different roll dates/back-adjustment settings, different
+//   session handling, and request.security carries the last CL print forward
+//   on bars where CL did not trade (residual staleness). Pine approximations
+//   on top: dropped bars become no-op bars (rolling windows dilate slightly),
+//   pandas min_periods warmups become full-window warmups, ewm std is
+//   approximated by EMA of moments, the global-MAD roll censor becomes a
+//   rolling-median proxy, and the continuous 1/sigma ensemble position is
+//   rounded to whole contracts. Numbers here will NOT match
+//   ortho/strategy_bzcl.py — that file is the ground truth; this script is
+//   an execution/monitoring aid.
+//
+// !! TV SIMULATES ONLY THE BZ LEG !!
+//   A Pine strategy can only trade the chart symbol. Every order this script
+//   places (BZ contracts) must be mirrored with the OPPOSITE CL order
+//   (1 spread unit = long 1 BZ + short 1 CL, 1000 bbl each). TV equity here
+//   is the BZ leg plus all-in costs — not the validated spread pnl.
+//
+// COST ASSUMPTION TO CONFIGURE:
+//   Validated spec: 1.5 ticks/leg/turn, tick $0.01/bbl, 1000 bbl contracts
+//   -> $15/leg/turn -> $30 per spread unit per turn (6 ticks round-trip),
+//   stress line x2 = $60. Default below: commission_type=cash_per_contract,
+//   commission_value=30.0 and slippage=0, so each BZ order is charged the
+//   ALL-IN cost of BOTH legs of the turn. For the x2 stress line set
+//   commission_value=60. Adjust in the strategy() header or Properties tab.
+// =============================================================================
+//@version=6
+strategy("BZ-CL spread MR delay-1 [BOUNDED CANDIDATE 2.39y]",
+     shorttitle="BZCL-MR-d1",
+     overlay=false,
+     initial_capital=250000,
+     default_qty_type=strategy.fixed,
+     default_qty_value=1,
+     commission_type=strategy.commission.cash_per_contract,
+     commission_value=30.0,             // $30/contract/turn = both legs, x1 spec
+     slippage=0,                        // cost fully carried by the commission
+     process_orders_on_close=false,     // CRITICAL: close-of-bar orders fill NEXT open
+     calc_on_every_tick=false,
+     calc_on_order_fills=false)
+
+// ------------------------------------------------------------------ inputs
+clSym    = input.symbol("NYMEX:CL1!", "WTI leg (manual spread construction)")
+bd       = input.float(22.0, "Bars per trading day (hourly Globex ~22-23)",
+     minval = 10.0, maxval = 24.0,
+     tooltip = "Trading-day windows convert to bars with this. The validated" +
+     " joined Yahoo frame ran ~21; a TV 60-min Globex chart has ~23 bars/day" +
+     " of which hour-22 UTC is excluded by hygiene.")
+qtyScale = input.float(1.0, "Contracts per 1/sigma spread unit", minval = 0.0,
+     tooltip = "Net ensemble position (in 1/sigma units) x this = target BZ" +
+     " contracts, rounded to whole contracts. Mirror every fill with the" +
+     " opposite CL1! order.")
+enforce  = input.bool(true, "Enforce NYMEX:BZ1! 60-min chart guard")
+
+// frozen rule constants — changing any of these voids the validation
+float Z_EXIT = 0.75
+float Z_STOP = 4.0
+float ZE_A   = 2.5
+float ZE_B   = 3.0
+
+if enforce and barstate.isfirst
+    if syminfo.root != "BZ"
+        runtime.error("Chart must be NYMEX:BZ1! (Brent financial). The CL leg is pulled via request.security.")
+    if timeframe.period != "60"
+        runtime.error("The rule was validated on hourly bars only — use the 60-minute timeframe.")
+
+// ------------------------------------------------- frozen window conversions
+int dtLen  = math.max(150, math.floor(28.0 * bd))    // detrend, 28 td
+int zLen9  = math.max(80, math.floor(9.0 * bd))      // z windows, td -> bars
+int zLen12 = math.max(80, math.floor(12.0 * bd))
+int zLen18 = math.max(80, math.floor(18.0 * bd))
+int zLen24 = math.max(80, math.floor(24.0 * bd))
+int tsLen  = math.floor(10.0 * bd)                   // 10-td time stop
+int vgSlow = math.floor(126.0 * bd)                  // 6m gate median
+
+// ------------------------------------------------------------- CL leg (manual spread)
+float clClose = request.security(clSym, timeframe.period, close,
+     gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+
+// -------------------------------------------- ingestion hygiene (wave-6 rules)
+// Validated engine DROPS hour-22-UTC bars (Globex break, 67-94% stale) and
+// Sunday bars. Pine cannot delete chart bars, so they become NO-OP bars:
+// dS=0, state machine frozen, no orders submitted. Rolling windows therefore
+// dilate slightly vs the Python ground truth (documented approximation).
+int  utcHour = hour(time, "Etc/UTC")
+bool sunday  = dayofweek(time, "Etc/UTC") == dayofweek.sunday
+bool valid   = utcHour != 22 and not sunday and not na(clClose) and not na(close)
+
+// ------------------------------------------- roll-gap censor (per-leg proxy)
+// Validated rule: censor day-boundary leg moves > 8 x 1.4826 x MAD ~ 11.9 x
+// median(|dC|). Pine proxy: rolling 504-bar median of |dC| per leg, threshold
+// 12x, day boundary in UTC. Censored bars contribute 0 to the signal.
+int  dayIdx  = math.floor(time / 86400000)
+bool newDay  = na(dayIdx[1]) or dayIdx != dayIdx[1]
+float absDbz = math.abs(nz(ta.change(close)))
+float absDcl = math.abs(nz(ta.change(clClose)))
+float sclBz  = ta.median(absDbz, 504)
+float sclCl  = ta.median(absDcl, 504)
+
+float sp = close - clClose                           // the spread, built in-script
+var float lastSp = na
+var float lastBz = na
+var float lastCl = na
+float dS = 0.0
+if valid
+    float dBz = na(lastBz) ? na : close - lastBz
+    float dCl = na(lastCl) ? na : clClose - lastCl
+    bool rollJump = newDay and ((not na(dBz) and not na(sclBz) and math.abs(dBz) > 12.0 * sclBz) or
+         (not na(dCl) and not na(sclCl) and math.abs(dCl) > 12.0 * sclCl))
+    if not na(lastSp) and not rollJump
+        dS := sp - lastSp                            // censored/no-op bars leave dS = 0
+    lastSp := sp
+    lastBz := close
+    lastCl := clClose
+
+// ------------------------------------------------------- ewm std (pandas-like)
+// Approximates pandas .ewm(span=n).std(): EMA of x and x^2 with
+// alpha = 2/(span+1); variance = E[x^2] - E[x]^2 (bias correction omitted —
+// one of the documented TV approximations).
+f_ewmstd(float x, simple float span) =>
+    float a = 2.0 / (span + 1.0)
+    var float m1 = na
+    var float m2 = na
+    if not na(x)
+        m1 := na(m1) ? x : a * x + (1.0 - a) * m1
+        m2 := na(m2) ? x * x : a * x * x + (1.0 - a) * m2
+    math.sqrt(math.max(nz(m2) - nz(m1) * nz(m1), 0.0))
+
+// ------------------------------------------------------------- signal pipeline
+// causal detrend: S = cumsum(dS - SMA(dS,28td)), drift estimate through t-1
+float muRaw = ta.sma(dS[1], dtLen)
+var float S = 0.0
+S := S + (dS - nz(muRaw))
+
+// causal z per ensemble window (mean/std exclude the current bar; sample std)
+f_z(float lvl, int len) =>
+    float m  = ta.sma(lvl[1], len)
+    float sd = ta.stdev(lvl[1], len, false)
+    na(sd) or sd <= 0 ? na : (lvl - m) / sd
+
+float z9  = f_z(S, zLen9)
+float z12 = f_z(S, zLen12)
+float z18 = f_z(S, zLen18)
+float z24 = f_z(S, zLen24)
+
+// vol gate: 5d ewm vol of dS above its rolling 6m median = dislocation regime
+float sf  = f_ewmstd(dS, 5.0 * bd)
+float ss  = ta.median(sf, vgSlow)
+bool  hot = not na(ss) and sf > ss
+
+// per-trade risk-frozen sizing vol (ewm 63td std of dS), forward-filled
+float sigma = f_ewmstd(dS, 63.0 * bd)
+var float ssafe = na
+ssafe := not na(sigma) and sigma > 0 ? sigma : ssafe
+
+// --------------------------------------------- one ensemble sub (state machine)
+// Verbatim port of the frozen decision loop: exits first (z-stop, time stop,
+// take-profit band), then entries (gated, risk-frozen 1/sigma size). State
+// only advances on valid bars (dropped bars do not exist in the ground truth).
+f_sub(float z, simple float ze, bool hot_, float sig_, simple int tsLen_, bool valid_) =>
+    var int   cur  = 0
+    var int   held = 0
+    var float q    = 0.0
+    if valid_
+        if cur != 0
+            held += 1
+            bool stopNow = na(z) or math.abs(z) >= Z_STOP or held >= tsLen_ or
+                 (cur > 0 and z >= -Z_EXIT) or (cur < 0 and z <= Z_EXIT)
+            if stopNow
+                cur := 0
+                held := 0
+        if cur == 0 and not na(z) and hot_ and not na(sig_) and sig_ > 0
+            if z <= -ze
+                cur := 1
+                held := 0
+                q := 1.0 / sig_
+            else if z >= ze
+                cur := -1
+                held := 0
+                q := 1.0 / sig_
+    cur * q
+
+// the 8 frozen subs -> ONE net position (equal-weight average, 1/sigma units)
+float u1 = f_sub(z9,  ZE_A, hot, ssafe, tsLen, valid)
+float u2 = f_sub(z9,  ZE_B, hot, ssafe, tsLen, valid)
+float u3 = f_sub(z12, ZE_A, hot, ssafe, tsLen, valid)
+float u4 = f_sub(z12, ZE_B, hot, ssafe, tsLen, valid)
+float u5 = f_sub(z18, ZE_A, hot, ssafe, tsLen, valid)
+float u6 = f_sub(z18, ZE_B, hot, ssafe, tsLen, valid)
+float u7 = f_sub(z24, ZE_A, hot, ssafe, tsLen, valid)
+float u8 = f_sub(z24, ZE_B, hot, ssafe, tsLen, valid)
+float uNet = (u1 + u2 + u3 + u4 + u5 + u6 + u7 + u8) / 8.0
+
+// ------------------------------------------------- DELAY-1 order submission
+// uSig = uNet[1]: the decision made at the PREVIOUS bar's close. Submitting
+// on this bar's close (process_orders_on_close=false) fills at the NEXT
+// bar's open = open[t+2] after the close-t decision. Keep the [1].
+float uSig = uNet[1]
+int targetQty = int(math.round(nz(uSig) * qtyScale))
+if valid
+    int delta = targetQty - int(math.round(strategy.position_size))
+    if delta > 0
+        strategy.order("spread+", strategy.long, qty = delta)
+    else if delta < 0
+        strategy.order("spread-", strategy.short, qty = -delta)
+
+// ---------------------------------------------------------------- monitoring
+plot(z18, "z (18td sub, reference)", color = color.new(color.blue, 0))
+hline(0, "mean", color = color.new(color.gray, 60))
+hline(2.5, "entry 2.5", color = color.new(color.red, 70), linestyle = hline.style_dotted)
+hline(-2.5, "entry -2.5", color = color.new(color.green, 70), linestyle = hline.style_dotted)
+hline(0.75, "exit band", color = color.new(color.gray, 80), linestyle = hline.style_dotted)
+hline(-0.75, "exit band-", color = color.new(color.gray, 80), linestyle = hline.style_dotted)
+hline(4.0, "z-stop", color = color.new(color.maroon, 70), linestyle = hline.style_dashed)
+hline(-4.0, "z-stop-", color = color.new(color.maroon, 70), linestyle = hline.style_dashed)
+plot(targetQty, "target spread contracts (delayed)", color = color.new(color.orange, 50),
+     style = plot.style_columns)
+bgcolor(hot ? na : color.new(color.gray, 92), title = "vol gate OFF (flat regime)")
