@@ -1,4 +1,54 @@
-# Spread Mean-Reversion Research — strategy-dev-mr
+# Orthogonal Mean-Reversion Research (Program 2 — ACTIVE, 2026-06-11)
+
+> Branch `orthogonal-mr`. Mandate: discover robust MR edges through mechanisms ORTHOGONAL to
+> the prior program — z-score/band/rolling-deviation/spread/cointegration approaches are
+> forbidden. Directions: liquidity/inventory events, volatility-state transitions,
+> cross-sectional lead-lag, market microstructure/sessions, regime-conditional nonlinearity.
+> Priority: smoothness > robustness > stability > simplicity > returns. Burden of proof high;
+> every idea assumed false until it survives falsification.
+
+## Apparatus (`ortho/lab.py`, controls in `ortho/validate_lab.py`)
+
+- Event-study core: forward returns measured **next-bar-open → close[t+h] in ATR units**
+  (scale-free; valid on back-adjusted series with negative levels), per-horizon de-overlap,
+  bootstrap t, **placebo null = same-count random-time events** (null absorbs drift, so the
+  test isolates the conditioning).
+- Honest backtester: next-open fills, one position at a time, per-trade 1/ATR sizing,
+  round-trip costs in bps of price (conservative per-instrument map, stress ×2),
+  Yahoo roll-gap censoring inherited.
+- Controls (all pass): random walk + random events → t≈0, placebo p uniform, backtest loses
+  exactly the cost drag; planted 0.2 vu post-event drift → detected at t=4.5, p=0.000, and
+  correctly NOT monetizable below cost; planted 0.6 vu edge → Sharpe 2.1 net; shuffle test
+  p=0.00. The apparatus can find a real edge and refuses fake ones.
+- **Data bug found & fixed:** Dukascopy hourly files (commodities AND FX) carry epoch
+  timestamps **19,800 s (+5:30 IST) behind true UTC** — verified by aligning weekend gaps to
+  the known CME Fri 22:00 UTC close and FX weekend fingerprint. Without the fix every
+  session/time-of-day result would be garbage. Yahoo/TV files are true UTC.
+
+## Hypothesis slate (wave 1 — event-study screens across ~45 instruments)
+
+| id | mechanism | status |
+|---|---|---|
+| H1 failed breakout | trapped breakout traders unwind after intrabar level take-out fails | testing |
+| H2 thrust exhaustion | liquidity-vacuum moves retrace when the book refills | testing |
+| H3 post-vol-shock normalization | forced flows overshoot; price relaxes once vol crests | testing |
+| H4 illiquid-session reversal | thin-book overnight moves re-priced by liquid-session flow | testing |
+| H5 leader-laggard diffusion | price discovery in the leader; laggard catches up with delay | testing |
+| H6 trend exhaustion / nonlinear response | reversion only in the extreme tail of runs | testing |
+| H7 overnight vs intraday / gap fade (daily, 25y × 49) | openings overshoot on thin liquidity | testing |
+| H8 hour-of-day conditioning | periodic mechanical flows (fixes, settlements) | testing |
+
+Verdict standard (pre-registered): kill = pooled |t|<2 at all horizons or sign-inconsistent
+(<55% of instruments) or edge/cost<0.5; promising = pooled |t|≥3, ≥60% same sign, placebo
+p≤0.05, edge/cost≥1. Screens use small pre-specified grids reported in full — no tuning.
+
+*(Results land here as waves complete; survivors face the full gauntlet: IS/OOS, walk-forward,
+vol/market regimes, parameter neighborhoods, 2× costs, cross-instrument, sub-periods,
+randomization.)*
+
+---
+
+# Spread Mean-Reversion Research — strategy-dev-mr (Program 1, COMPLETE)
 
 ## ★ GOAL MET: 10 smooth, near-no-downside securities (`curves/broad_book.png`)
 
