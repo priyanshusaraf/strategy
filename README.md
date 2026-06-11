@@ -177,6 +177,43 @@ C2 (Yahoo BZ−CL) must pass ALL of:
    BZ per-leg staleness rate within bars) reported and not artifact-dominant.
 Fail any → KILL, and the program concludes with the documented negative result.
 
+### Wave-5 result: KILL by the gate — with a gate-design finding
+
+Battery on C2 (`ortho/w5_adjudication.py`, `curves/w5_adjudication.png`):
+- **Delay-1: PASS at 98% retention** (1.19 vs 1.21; ×2 costs 0.98; delay-2 still 0.81).
+  C2 is emphatically not a first-bar bounce harvest (C1 under the same test: 0.15).
+- **Liquid-hours: PASS** (1.04 liquid-only = 86% retention; thin-tercile carries 10.4% of
+  pnl; profitable exits concentrate at liquid 8–9 UTC, not thin hours).
+- **Bounce diagnostics: PASS** on the gate (with an adverse note: spread lag-1 AC −0.13,
+  deepening to −0.5 overnight, exceeds both legs' own AC).
+- **Misalignment: FAIL decisively** — shifting the CL leg ±1h supercharges the frozen rule
+  to 4.56/4.27 (bound 1.81), robust to ×2 costs. Pre-registered rule → **KILL**.
+
+**Epistemics of this kill (recorded honestly):** misaligning a leg injects
+S′ = S + dCL[t] — large stationary white noise added to a level — and *any* z-MR rule
+harvests added stationary noise by construction. So the misalignment control, as designed,
+is unpassable in principle for this rule family on any data: it proves the *rule's output
+carries no evidential weight about feed soundness*, not that C2's aligned pnl is artifact.
+The adjudicator's prescription: an edge claim from this family is admissible only from an
+engine whose performance DEGRADES under deliberate misalignment. Delay-1 execution is
+exactly such an engine candidate: the injected noise dCL[t] leaves the spread before a
+delayed fill, so misalignment-under-delay should collapse while a genuine multi-bar edge
+survives. Data hygiene addendum: hour-22-UTC bars (Globex break) are 67–94% stale and must
+be dropped at ingestion.
+
+## Wave 6 (pre-registered, final): the discriminating experiment
+
+Engine: frozen rule with **all fills (entry AND exit) at open[t+2]** (delay-1 execution as
+the strategy definition), hour-22 bars dropped at ingestion. Honesty note: the aligned
+delay-1 number (~1.19, entries-only-delayed) is already known from wave 5 — the NEW,
+decision-bearing information is the misalignment control under delayed execution.
+PROMOTE (as a bounded 2.4y candidate, not a proven edge) iff ALL of:
+1. aligned C2 ≥ 0.6 ×1 and ≥ 0.4 ×2, halves both > 0;
+2. **misaligned (±1h) under the same delayed execution < 1.5× aligned** (the certification
+   gate — if misalignment still supercharges under delay, kill irrevocably);
+3. C1 under the same engine stays dead (< 0.3 — consistency: its edge was artifact).
+Else: final KILL and the program concludes with the documented negative result.
+
 ---
 
 # Spread Mean-Reversion Research — strategy-dev-mr (Program 1, COMPLETE — PARTIALLY RETRACTED)
