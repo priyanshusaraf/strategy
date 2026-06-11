@@ -1,5 +1,14 @@
 # Project Summary — Mean-Reversion Strategy on Economically-Linked Spreads
 
+> **⚠ RETRACTION (2026-06-11):** the headline claims in this document are retracted.
+> Forensic re-validation (branch `orthogonal-mr`, `ortho/w3_brnwti_honest.py`,
+> README "RETRACTION" section) found the raw Dukascopy data contains 33–38% stale
+> placeholder bars; with clean data, honest next-open fills and real tick costs the 12y
+> BRENT–WTI Sharpe is **0.37** (not 1.93), the 3.1y figure ~0.9–1.1 (not 2.90), and the
+> "10 smooth securities" book does not survive (dirty data + same-close fills + ex-post
+> selection). Still standing: the daily falsification record, the CL–BRN 3.3y honest
+> validation (IS 0.78 / OOS 1.28), and the 2y Yahoo hourly books (0.78/1.84 OOS curated).
+
 **Goal:** a smooth, upward-sloping equity curve with nearly no downside across at least 10
 securities, trading mean reversion only, focused primarily on economically-linked crack spreads.
 

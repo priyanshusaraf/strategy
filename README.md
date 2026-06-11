@@ -87,11 +87,69 @@ either falsified, sub-cost, or feed-specific. This is the expected shape of hone
 — the apparatus has caught two classes of fake edge (cost-invisible significance, feed
 artifacts) that would each have produced a beautiful fake equity curve.
 
+## Wave 3: volume climax, honest Program-1 re-validation, PDR closure — ALL KILLED
+
+| study | result |
+|---|---|
+| W3-A volume climax | **KILL — mechanism falsified.** Volume conditioning *subtracts* edge vs a move-only placebo (t=−0.90 against placebo; placebo +0.019 vu vs real −0.014). Real-volume duka events dead-zero; FX-major volume climaxes predict **continuation** (t −2.8 to −4.1), opposite of capitulation. All 10 grid cells negative; Yahoo confirm feed negative. The last untested orthogonal direction is closed. `curves/w3_volclimax.png` |
+| W3-B honest BRENT–WTI | **KILL of the published claim — see retraction below.** Honest 12.3y Sharpe = **0.37** (×2 costs 0.17), not 1.93. Faithful replication proven; apparatus controls pass (OU 1.85 / RW −0.08). Residual: real, placebo-beating entry conditioning (event-study t up to 2.78) and a modest live edge on REAL ICE futures quotes (TV feed, 3.2y: honest 0.93, eqR² 0.97) where the CFD feed shows ~0 in 2023–26. `curves/w3_brnwti_honest.png` |
+| W3-C PDR commodities | **KILL — CFD-feed artifact confirmed.** In-feed duka replicates (t=2.61) but both real-futures judgment feeds fail (TV t=1.27, carried by one CFD instrument; Yahoo t=−0.78 wrong sign; combined judgment portfolio Sharpe 0.04). Both feeds powered (119/426 events) — a powered kill. `curves/w3_pdr_cmd.png` |
+
 ---
 
-# Spread Mean-Reversion Research — strategy-dev-mr (Program 1, COMPLETE)
+## ⚠ RETRACTION of Program 1 headline results (2026-06-11, forensic finding of W3-B)
 
-## ★ GOAL MET: 10 smooth, near-no-downside securities (`curves/broad_book.png`)
+**Raw Dukascopy CSVs (`data_duka/`, `data_fx/`) contain 33–38% stale placeholder bars**
+(market-closed hours filled with frozen quotes: `high==low`, `volume==0`).
+Program 1's engines (`duka_cracks.py`, `broad_book.py`) consumed them raw: z-scores were
+computed against frozen quotes and "filled" at prices that never traded.
+
+Attribution ladder for the 12y BRENT–WTI claim (each step cumulative):
+published **1.93** → faithful re-run on dirty join 1.98 → *drop placeholder bars* **0.60**
+→ real tick costs (same-close) 0.41 → honest next-open fills **0.37** → ×2 costs 0.17.
+The fabrication was the stale bars (~1.3–1.4 Sharpe), not primarily the same-close fills
+(0.04). Additionally, the frozen rule cannot harvest even a *synthetic* OU spread at its own
+nominal 10-trading-day timescale (Sharpe 0.40 < 0.8 bar, identical through Program 1's own
+committed code) — it only harvests half-lives ≤ 5td, so the "2–3 week reversion" story was
+never mechanically coherent.
+
+**Retracted** (placeholder-bar artifact and/or same-close fills on async feeds):
+- 12y BRENT–WTI Sharpe 1.93 and the 36-pair Dukascopy scan (`duka_cracks.py`)
+- the "GOAL MET: 10 smooth securities" broad book (`broad_book.py` — same dirty duka/fx
+  data, same-close fills, λσ costs, ex-post winner selection)
+- the 3.1y BRN–WTI Sharpe 2.90 (`hourly4y.py` — same-close fills across async venue feeds;
+  honest next-open on the same TV window gives ~0.9–1.1)
+
+**Still standing** (honest engines, clean data):
+- the entire daily falsification record (`mrlab.py` lab, TV daily data)
+- the 3.3y CL–BRN honest validation (next-open, IS 0.78 / OOS 1.28, TV data)
+- the 2y Yahoo hourly books (`hourly_lab.py`/`final.py`: curated 0.78/1.84 OOS,
+  broad 0.68/1.09) — honest fills, real futures legs, roll-censored
+- a modest, feed-fragile BRENT–WTI reversion on real futures quotes (~0.9, 3.2y, wave-3)
+
+## Wave 4 (pre-registered): the last stand — honest BRN–WTI on real futures feeds only
+
+The only surviving lead. Frozen Program-1 rule, honest fills, on every REAL-futures dataset
+on disk: TV BRN1!/CFI_WTI 60-min (3.2y), the original `cl_brn_spread_60.csv` TV export
+(3.3y, corroboration only — mandate forbids trusting TV pre-built spreads as primary),
+Yahoo BZ/CL legs (2y, roll-censored). Promote iff: Sharpe ≥ 0.6 net ×1 on each of ≥2
+independent real-futures constructions AND pooled halves both > 0 AND ×2-cost Sharpe ≥ 0.3
+AND no contradiction with the 12y CFD honest figure. Else: document the program-wide
+negative result as the finding.
+
+---
+
+# Spread Mean-Reversion Research — strategy-dev-mr (Program 1, COMPLETE — PARTIALLY RETRACTED)
+
+> **⚠ 2026-06-11: the headline results below are RETRACTED.** Wave-3 forensics (Program 2,
+> above) proved the 12y Dukascopy results and the "10 smooth securities" book were fabricated
+> by 33–38% stale placeholder bars in the raw Dukascopy data (plus same-close fills and
+> ex-post selection). Honest 12.3y BRENT–WTI ≈ **0.37**, not 1.93. See the retraction
+> section above for the attribution ladder and exactly which results still stand
+> (daily falsification record, CL–BRN 3.3y honest validation, Yahoo 2y books).
+> The text below is preserved unedited as the historical record.
+
+## ~~★ GOAL MET~~ (RETRACTED): 10 smooth, near-no-downside securities (`curves/broad_book.png`)
 
 Applying the validated OU vol-gated mean-reversion engine to a **broadened economically-linked
 universe** (commodity cracks as the anchor sleeve + tightly-cointegrated FX crosses), over
